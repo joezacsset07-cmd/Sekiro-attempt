@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZANSHIN — Sekiro Attempt</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="game"></div>
+  <div id="hud">
+    <div id="boss-ui">
+      <div id="boss-name">THE ASHEN WARRIOR</div>
+      <div class="bar"><div id="boss-posture"></div></div>
+      <div id="boss-hp" class="bar hp"><div></div></div>
+    </div>
+    <div id="player-ui">
+      <div class="bar hp"><div id="player-hp"></div></div>
+      <div class="bar"><div id="player-posture"></div></div>
+    </div>
+    <div id="prompt"></div>
+    <div id="banner"></div>
+  </div>
+  <div id="start-screen">
+    <div class="panel">
+      <div class="eyebrow">ZANSHIN</div>
+      <h1>THE ASHEN WARRIOR</h1>
+      <p>Deflect. Break posture. Deathblow.</p>
+      <button id="start">BEGIN</button>
+      <small>WASD · Mouse · LMB attack · RMB guard · Space dodge</small>
+    </div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
