@@ -3,30 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>ZANSHIN — Sekiro Attempt</title>
+  <meta name="theme-color" content="#100b12" />
+  <title>ZANSHIN — The Ashen Warrior</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div id="game"></div>
+  <div id="game" aria-label="Zanshin 3D duel"></div>
   <div id="hud">
     <div id="boss-ui">
-      <div id="boss-name">THE ASHEN WARRIOR</div>
-      <div id="boss-hp" class="bar hp"><div></div></div>
-      <div class="bar"><div id="boss-posture"></div></div>
+      <div class="boss-heading"><span class="eyebrow-small">DUEL</span><span id="boss-name">THE ASHEN WARRIOR</span></div>
+      <div id="boss-hp" class="bar hp" aria-label="Boss health"><div></div></div>
+      <div class="bar posture" aria-label="Boss posture"><div id="boss-posture"></div></div>
+    </div>
+    <div id="combat-callout" aria-live="polite">
+      <div id="combat-callout-title">PERILOUS ATTACK</div>
+      <div id="combat-callout-sub">React to the warrior's tell.</div>
     </div>
     <div id="player-ui">
-      <div class="bar hp"><div id="player-hp"></div></div>
-      <div class="bar"><div id="player-posture"></div></div>
+      <div id="player-label">WANDERER · 100 HP</div>
+      <div class="bar hp" aria-label="Player health"><div id="player-hp"></div></div>
+      <div class="bar posture" aria-label="Player posture"><div id="player-posture"></div></div>
+      <div class="status-legend"><span><i class="legend-hp"></i>VITALITY</span><span><i class="legend-posture"></i>POSTURE</span></div>
     </div>
-    <div id="prompt"></div>
+    <div id="prompt" role="status"></div>
+    <div id="prompt-small"></div>
+    <div id="combat-hint"><span class="keycap">E</span><span>Heavy cut</span><span class="hint-divider"></span><span class="keycap">R</span><span>Retry after the duel</span></div>
   </div>
   <div id="start-screen">
     <div class="panel">
-      <div class="eyebrow">ZANSHIN</div>
+      <div class="eyebrow">Z A N S H I N</div>
       <h1>THE ASHEN WARRIOR</h1>
-      <p>Deflect. Break posture. Deathblow.</p>
+      <p>Steel remembers every mistake.</p>
+      <div class="panel-rule"><span></span><i></i><span></span></div>
       <button id="start">BEGIN</button>
-      <small>WASD · LMB/J attack · RMB/K guard · Shift/L dodge · F deathblow</small>
+      <div class="control-grid">
+        <span><b>W A S D</b><small>MOVE</small></span>
+        <span><b>LMB / J</b><small>ATTACK</small></span>
+        <span><b>E</b><small>HEAVY CUT</small></span>
+        <span><b>RMB / K</b><small>GUARD / DEFLECT</small></span>
+        <span><b>SHIFT / L</b><small>DODGE</small></span>
+        <span><b>F</b><small>DEATHBLOW</small></span>
+      </div>
+      <small class="panel-note">Deflect at the moment of impact. Holding guard blocks, but it will not save your posture forever.</small>
     </div>
   </div>
   <script type="module" src="./src/main.js"></script>
