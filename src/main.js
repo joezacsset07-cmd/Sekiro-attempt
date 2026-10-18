@@ -6,19 +6,185 @@ const effects=[];
 const ui={bossHP:document.querySelector('#boss-hp>div'),bossPosture:document.querySelector('#boss-posture'),playerHP:document.querySelector('#player-hp'),playerPosture:document.querySelector('#player-posture'),prompt:document.querySelector('#prompt'),promptSmall:document.querySelector('#prompt-small'),callout:document.querySelector('#combat-callout'),calloutTitle:document.querySelector('#combat-callout-title'),calloutSub:document.querySelector('#combat-callout-sub'),start:document.querySelector('#start'),screen:document.querySelector('#start-screen'),eyebrow:document.querySelector('.eyebrow'),title:document.querySelector('.panel h1'),description:document.querySelector('.panel p'),controls:document.querySelector('.panel-note'),playerLabel:document.querySelector('#player-label')};
 
 function mat(color,metal=0,rough=.75,extra={}){return new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough,...extra});}
-function fighter(color,accent,blade){
-  const g=new THREE.Group(),body=mat(color),acc=mat(accent,.22,.6),cloth=mat(0x35252a,0,.92),steel=mat(blade,.9,.22,{emissive:0x17100d,emissiveIntensity:.22}),dark=mat(0x17151a,.12,.8),b={all:[]};
-  function part(parent,geo,m,pos,rot){const o=new THREE.Mesh(geo,m);if(pos)o.position.set(pos[0],pos[1],pos[2]);if(rot)o.rotation.set(rot[0],rot[1],rot[2]);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
+
+let characterTextures=null;
+function getCharacterTextures(){
+  if(characterTextures)return characterTextures;
+  function canvasTexture(kind){
+    const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;
+    const ctx=canvas.getContext('2d');
+    const base=kind==='cloth'?'#d1d1d1':kind==='skin'?'#dedede':'#d0d0d0';
+    ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
+    if(kind==='cloth'){
+      for(let y=0;y<256;y+=4){ctx.fillStyle=y%8===0?'rgba(35,35,35,.19)':'rgba(255,255,255,.16)';ctx.fillRect(0,y,256,1);}
+      for(let x=0;x<256;x+=4){ctx.fillStyle=x%8===0?'rgba(28,28,28,.16)':'rgba(255,255,255,.13)';ctx.fillRect(x,0,1,256);}
+      for(let i=0;i<480;i++){ctx.fillStyle=Math.random()>.5?'rgba(20,20,20,.10)':'rgba(255,255,255,.12)';ctx.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*3,1);}
+      ctx.strokeStyle='rgba(20,20,20,.12)';ctx.lineWidth=2;
+      for(let y=12;y<256;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y);ctx.stroke();}
+    }else if(kind==='skin'){
+      for(let i=0;i<180;i++){const x=Math.random()*256,y=Math.random()*256,r=1+Math.random()*8;ctx.fillStyle=Math.random()>.45?'rgba(70,70,70,.035)':'rgba(255,255,255,.12)';ctx.beginPath();ctx.ellipse(x,y,r,r*(.5+Math.random()),0,0,Math.PI*2);ctx.fill();}
+      for(let i=0;i<250;i++){ctx.fillStyle='rgba(60,60,60,.12)';ctx.fillRect(Math.random()*256,Math.random()*256,1,1);}
+    }else{
+      for(let y=0;y<256;y+=6){ctx.fillStyle=y%12===0?'rgba(35,35,35,.14)':'rgba(255,255,255,.13)';ctx.fillRect(0,y,256,1);}
+      for(let i=0;i<170;i++){ctx.strokeStyle=Math.random()>.5?'rgba(35,35,35,.22)':'rgba(255,255,255,.28)';ctx.lineWidth=Math.random()>.8?2:1;const x=Math.random()*256,y=Math.random()*256;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+2+Math.random()*17,y-1+Math.random()*3);ctx.stroke();}
+      for(let i=0;i<24;i++){ctx.fillStyle='rgba(50,50,50,.10)';ctx.fillRect(Math.random()*256,Math.random()*256,2+Math.random()*8,2+Math.random()*4);}
+    }
+    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;return texture;
+  }
+  characterTextures={cloth:canvasTexture('cloth'),skin:canvasTexture('skin'),metal:canvasTexture('metal')};
+  return characterTextures;
+}
+function fighter(color,accent,blade,isBoss=false){
+  const g=new THREE.Group(),tex=getCharacterTextures();
+  const fabric=mat(color,.02,.96,{map:tex.cloth,bumpMap:tex.cloth,bumpScale:.018});
+  const darkFabric=mat(isBoss?0x21191d:0x171a20,.04,.98,{map:tex.cloth,bumpMap:tex.cloth,bumpScale:.012});
+  const skin=mat(isBoss?0x76564c:0xb77e5c,0,.84,{map:tex.skin,bumpMap:tex.skin,bumpScale:.008});
+  const armor=mat(accent,.45,.55,{map:tex.metal,bumpMap:tex.metal,bumpScale:.022});
+  const steel=mat(blade,.88,.24,{map:tex.metal,bumpMap:tex.metal,bumpScale:.012,emissive:0x18100c,emissiveIntensity:.12});
+  const leather=mat(isBoss?0x3c171c:0x30241f,.05,.9,{map:tex.cloth,bumpMap:tex.cloth,bumpScale:.018});
+  const cord=mat(isBoss?0x9b3832:0xb18a51,.25,.48,{map:tex.metal});
+  const b={all:[],isBoss};
+  function part(parent,geo,m,pos,rot,scale){
+    const o=new THREE.Mesh(geo,m);if(pos)o.position.set(pos[0],pos[1],pos[2]);if(rot)o.rotation.set(rot[0],rot[1],rot[2]);if(scale)o.scale.set(scale[0],scale[1],scale[2]);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;
+  }
   function pivot(parent,x,y,z=0){const o=new THREE.Group();o.position.set(x,y,z);parent.add(o);b.all.push(o);return o;}
-  part(g,new THREE.BoxGeometry(.64,.3,.42),acc,[0,.93,0]);part(g,new THREE.BoxGeometry(.69,.09,.46),dark,[0,.84,0]);part(g,new THREE.BoxGeometry(.68,.12,.47),cloth,[0,1.08,0]);part(g,new THREE.BoxGeometry(.22,.42,.08),cloth,[.2,.68,.23],[.16,-.1,-.08]);
-  b.leftLeg=pivot(g,-.19,.86);b.rightLeg=pivot(g,.19,.86);part(b.leftLeg,new THREE.CylinderGeometry(.12,.145,.48,9),body,[0,-.23,0]);part(b.rightLeg,new THREE.CylinderGeometry(.12,.145,.48,9),body,[0,-.23,0]);
-  b.leftKnee=pivot(b.leftLeg,0,-.43);b.rightKnee=pivot(b.rightLeg,0,-.43);part(b.leftKnee,new THREE.CylinderGeometry(.09,.11,.42,8),body,[0,-.2,0]);part(b.rightKnee,new THREE.CylinderGeometry(.09,.11,.42,8),body,[0,-.2,0]);part(b.leftKnee,new THREE.BoxGeometry(.24,.11,.34),dark,[0,-.4,.06]);part(b.rightKnee,new THREE.BoxGeometry(.24,.11,.34),dark,[0,-.4,.06]);
-  b.torso=pivot(g,0,1.1);part(b.torso,new THREE.CylinderGeometry(.3,.27,.75,12),body,[0,.2,0]);part(b.torso,new THREE.BoxGeometry(.6,.46,.18),acc,[0,.2,.18]);part(b.torso,new THREE.BoxGeometry(.54,.055,.035),steel,[0,.4,.285]);part(b.torso,new THREE.BoxGeometry(.6,.7,.075),cloth,[0,.02,-.22],[.1,0,0]);
-  b.head=pivot(b.torso,0,.67,.01);part(b.head,new THREE.SphereGeometry(.215,16,12),body,[0,.14,0]);part(b.head,new THREE.BoxGeometry(.34,.12,.31),dark,[0,.27,0]);part(b.head,new THREE.BoxGeometry(.38,.07,.34),acc,[0,.32,.015],[0,0,-.03]);part(b.head,new THREE.BoxGeometry(.26,.035,.08),steel,[0,.21,.17]);
-  b.leftArm=pivot(b.torso,-.38,.46);b.rightArm=pivot(b.torso,.38,.46);part(b.leftArm,new THREE.SphereGeometry(.16,10,8),acc,[0,0,0]);part(b.rightArm,new THREE.SphereGeometry(.16,10,8),acc,[0,0,0]);part(b.leftArm,new THREE.CylinderGeometry(.085,.105,.43,8),body,[0,-.22,0]);part(b.rightArm,new THREE.CylinderGeometry(.085,.105,.43,8),body,[0,-.22,0]);
-  b.leftElbow=pivot(b.leftArm,0,-.39);b.rightElbow=pivot(b.rightArm,0,-.39);part(b.leftElbow,new THREE.CylinderGeometry(.065,.08,.34,8),body,[0,-.17,0]);part(b.rightElbow,new THREE.CylinderGeometry(.065,.08,.34,8),body,[0,-.17,0]);
-  b.sword=pivot(b.rightElbow,0,-.33,.055);part(b.sword,new THREE.CylinderGeometry(.027,.034,.23,8),dark,[0,-.08,0]);part(b.sword,new THREE.BoxGeometry(.22,.04,.055),acc,[0,.03,0]);b.blade=part(b.sword,new THREE.BoxGeometry(.055,1.05,.025),steel,[0,.58,.015]);part(b.sword,new THREE.ConeGeometry(.034,.14,4),steel,[0,1.16,.015]);b.weaponMaterial=steel;
-  part(g,new THREE.CylinderGeometry(.04,.05,.76,8),dark,[-.42,.98,-.11],[0,0,-.12]);g.userData=b;return g;
+  function sphere(parent,m,pos,scale,rot){return part(parent,new THREE.SphereGeometry(1,18,14),m,pos,rot,scale);}
+  function box(parent,m,pos,size,rot){return part(parent,new THREE.BoxGeometry(size[0],size[1],size[2]),m,pos,rot);}
+  function ring(parent,m,pos,r,t,rot,scale){return part(parent,new THREE.TorusGeometry(r,t,8,24),m,pos,rot,scale);}
+
+  // Feet and layered lower-leg protection.
+  b.leftLeg=pivot(g,-.19,.86);b.rightLeg=pivot(g,.19,.86);
+  for(const leg of [b.leftLeg,b.rightLeg]){
+    part(leg,new THREE.CylinderGeometry(.13,.155,.48,12),fabric,[0,-.23,0]);
+    sphere(leg,leather,[0,-.11,0],[.14,.20,.145]);
+  }
+  b.leftKnee=pivot(b.leftLeg,0,-.43);b.rightKnee=pivot(b.rightLeg,0,-.43);
+  for(const knee of [b.leftKnee,b.rightKnee]){
+    part(knee,new THREE.CylinderGeometry(.095,.115,.39,10),fabric,[0,-.19,0]);
+    sphere(knee,armor,[0,-.18,.105],[.105,.22,.055]);
+    box(knee,leather,[0,-.14,.152],[.22,.035,.018]);
+    box(knee,leather,[0,-.28,.151],[.20,.035,.018]);
+    box(knee,darkFabric,[0,-.405,.11],[.29,.12,.38],[.02,0,0]);
+    box(knee,leather,[0,-.432,.20],[.24,.045,.22]);
+  }
+  // Feet peek out from the shin guards; straps read clearly from behind too.
+  for(const leg of [b.leftLeg,b.rightLeg]){
+    box(leg,darkFabric,[0,-.82,.12],[.28,.13,.42],[.02,0,0]);
+    box(leg,leather,[0,-.785,.245],[.27,.035,.08]);
+    box(leg,leather,[0,-.845,.245],[.27,.035,.08]);
+  }
+
+  // Hip armour, obi sash and split hanging cloth panels.
+  box(g,darkFabric,[0,.91,0],[.68,.30,.45]);
+  box(g,leather,[0,1.01,.018],[.70,.105,.48]);
+  box(g,cord,[0,1.025,.266],[.43,.035,.018]);
+  ring(g,leather,[0,.99,0],.30,.043,[Math.PI/2,0,0],[1,1,.9]);
+  ring(g,cord,[0,1.015,0],.30,.012,[Math.PI/2,0,0],[1,1,.9]);
+  for(const x of [-.23,0,.23]){
+    box(g,leather,[x,.70,.205],[.20,.42,.07],[.04,0,x*.32]);
+    box(g,armor,[x,.72,.248],[.17,.31,.025],[.04,0,x*.32]);
+    box(g,cord,[x,.88,.267],[.15,.018,.012]);
+    box(g,cord,[x,.58,.246],[.15,.018,.012]);
+  }
+  // Main torso and a layered lamellar chest plate.
+  b.torso=pivot(g,0,1.1);
+  part(b.torso,new THREE.CylinderGeometry(.295,.27,.73,16),fabric,[0,.19,0]);
+  sphere(b.torso,darkFabric,[0,.15,-.055],[.31,.37,.26]);
+  sphere(b.torso,armor,[0,.20,.178],[.29,.265,.105]);
+  box(b.torso,leather,[0,.19,.276],[.43,.27,.035]);
+  box(b.torso,armor,[0,.20,.298],[.35,.205,.025]);
+  box(b.torso,cord,[0,.39,.316],[.30,.023,.018]);
+  box(b.torso,cord,[0,.02,.316],[.30,.023,.018]);
+  box(b.torso,leather,[-.13,.23,.319],[.018,.20,.016],[0,0,-.17]);
+  box(b.torso,leather,[.13,.23,.319],[.018,.20,.016],[0,0,.17]);
+  // Crossed cloth lapels give the torso a kimono silhouette.
+  box(b.torso,fabric,[-.09,.38,.245],[.18,.38,.045],[0,0,-.46]);
+  box(b.torso,fabric,[.09,.38,.252],[.18,.38,.045],[0,0,.46]);
+  box(b.torso,cord,[0,.35,.325],[.035,.30,.015],[0,0,-.12]);
+  // Back cloth / short mantle.
+  box(b.torso,darkFabric,[0,-.02,-.245],[.55,.68,.06],[.08,0,0]);
+  box(b.torso,leather,[0,-.33,-.265],[.48,.055,.018]);
+
+  // Shoulder guards: rounded cap plus small overlapping lamella plates.
+  for(const sign of [-1,1]){
+    sphere(b.torso,armor,[sign*.34,.47,.025],[.20,.16,.20],[0,0,sign*.12]);
+    sphere(b.torso,leather,[sign*.34,.44,.165],[.16,.12,.065]);
+    for(let j=0;j<3;j++){
+      box(b.torso,armor,[sign*(.36+j*.008),.39-j*.075,.20],[.29-j*.035,.075,.045],[0,0,sign*.10]);
+      box(b.torso,leather,[sign*.36,.35-j*.075,.226],[.20,.018,.018],[0,0,sign*.10]);
+    }
+  }
+  // Arms remain jointed so the combat animation drives the whole silhouette.
+  b.leftArm=pivot(b.torso,-.38,.46);b.rightArm=pivot(b.torso,.38,.46);
+  for(const arm of [b.leftArm,b.rightArm]){
+    sphere(arm,leather,[0,-.02,0],[.15,.20,.15]);
+    part(arm,new THREE.CylinderGeometry(.085,.105,.39,12),fabric,[0,-.21,0]);
+  }
+  b.leftElbow=pivot(b.leftArm,0,-.38);b.rightElbow=pivot(b.rightArm,0,-.38);
+  for(const [elbow,sign] of [[b.leftElbow,-1],[b.rightElbow,1]]){
+    part(elbow,new THREE.CylinderGeometry(.065,.082,.30,10),skin,[0,-.14,0]);
+    sphere(elbow,leather,[0,-.16,.02],[.083,.17,.085]);
+    box(elbow,armor,[0,-.15,.082],[.15,.20,.035],[0,0,sign*.12]);
+    ring(elbow,cord,[0,-.055,0],.082,.012,[Math.PI/2,0,0],[1,1,.8]);
+    sphere(elbow,leather,[0,-.33,.025],[.085,.09,.085]);
+  }
+  // Hands on the hilt and a visible secondary forearm wrap.
+  sphere(b.leftElbow,skin,[0,-.34,.07],[.07,.075,.075]);
+  sphere(b.rightElbow,skin,[0,-.34,.07],[.07,.075,.075]);
+  box(b.leftElbow,leather,[0,-.21,.088],[.16,.105,.04]);
+  box(b.rightElbow,leather,[0,-.21,.088],[.16,.105,.04]);
+
+  // Head, tied hair and face wrapping.
+  b.head=pivot(b.torso,0,.66,.005);
+  sphere(b.head,skin,[0,.13,.015],[.17,.205,.155]);
+  sphere(b.head,darkFabric,[0,.20,-.035],[.21,.19,.17]);
+  sphere(b.head,leather,[0,.31,-.04],[.16,.105,.15]);
+  box(b.head,leather,[0,.085,.135],[.30,.085,.055]);
+  box(b.head,cord,[0,.13,.164],[.30,.023,.018]);
+  // Brows and narrow eye slits visible beneath the headgear.
+  box(b.head,darkFabric,[-.075,.18,.151],[.074,.018,.012],[0,0,-.06]);
+  box(b.head,darkFabric,[.075,.18,.151],[.074,.018,.012],[0,0,.06]);
+  box(b.head,steel,[0,.015,.167],[.19,.025,.018]);
+  // Rear hair knot and two ties break the round-sphere silhouette.
+  sphere(b.head,darkFabric,[0,.34,-.12],[.075,.085,.09]);
+  box(b.head,cord,[0,.345,-.105],[.12,.018,.025]);
+
+  if(isBoss){
+    // The Ashen Warrior gets a dark kabuto, red menpo and unmistakable horns.
+    sphere(b.head,armor,[0,.355,0],[.225,.12,.20]);
+    box(b.head,leather,[0,.29,.125],[.32,.045,.12]);
+    sphere(b.head,leather,[0,.075,.16],[.16,.12,.065]);
+    box(b.head,cord,[0,.06,.218],[.23,.035,.022]);
+    for(const sign of [-1,1]){
+      part(b.head,new THREE.ConeGeometry(.052,.25,7),armor,[sign*.16,.40,.035],[0,0,-sign*.42]);
+      box(b.head,armor,[sign*.19,.22,.09],[.065,.13,.045],[0,0,sign*.24]);
+      box(b.head,cord,[sign*.075,.18,.219],[.065,.018,.02],[0,0,-sign*.12]);
+    }
+    part(b.head,new THREE.ConeGeometry(.045,.14,6),steel,[0,-.02,.225],[Math.PI,0,0]);
+    box(b.head,armor,[0,.47,-.015],[.045,.20,.045],[0,0,.04]);
+  }else{
+    // A travelling shinobi hood and a tied cloth tail, rather than a bare ball head.
+    sphere(b.head,darkFabric,[0,.25,-.11],[.225,.22,.14]);
+    box(b.head,leather,[0,.275,-.02],[.33,.06,.28],[.08,0,0]);
+    box(b.head,fabric,[-.105,.29,-.12],[.08,.25,.08],[.08,0,-.2]);
+    box(b.head,fabric,[.10,.26,-.14],[.07,.23,.07],[.12,0,.2]);
+  }
+
+  // A curved, slightly tapered katana blade, tsuba and wrapped hilt.
+  b.sword=pivot(b.rightElbow,0,-.32,.065);
+  part(b.sword,new THREE.CylinderGeometry(.026,.031,.24,10),leather,[0,-.07,0]);
+  for(let i=0;i<5;i++)box(b.sword,cord,[0,-.11+i*.035,.026],[.054,.012,.008],[0,0,i%2===0?.45:-.45]);
+  part(b.sword,new THREE.CylinderGeometry(.05,.05,.035,12),armor,[0,.035,0],[0,0,Math.PI/2],[1,.7,1]);
+  const bladeShape=new THREE.Shape();bladeShape.moveTo(-.026,.04);bladeShape.quadraticCurveTo(-.02,.30,-.014,.55);bladeShape.quadraticCurveTo(-.005,.88,.014,1.07);bladeShape.lineTo(.022,1.11);bladeShape.quadraticCurveTo(.039,.88,.028,.62);bladeShape.quadraticCurveTo(.025,.28,.026,.04);bladeShape.closePath();
+  const bladeGeo=new THREE.ExtrudeGeometry(bladeShape,{depth:.025,bevelEnabled:true,bevelSegments:1,steps:1,bevelSize:.004,bevelThickness:.004});
+  b.blade=part(b.sword,bladeGeo,steel,[0,.04,-.012]);
+  box(b.sword,armor,[.001,.53,.018],[.009,.84,.008]);
+  // Sheathed spare blade across the back; purely cosmetic.
+  const sheath=pivot(g,-.32,1.08,-.20);sheath.rotation.z=.12;
+  part(sheath,new THREE.CylinderGeometry(.045,.035,.83,10),leather,[0,-.03,0],[0,0,-.95]);
+  part(sheath,new THREE.CylinderGeometry(.025,.026,.73,8),darkFabric,[0,-.03,.005],[0,0,-.95]);
+  box(sheath,cord,[.31,.33,0],[.09,.045,.055]);
+  g.userData=b;return g;
 }
 class Combatant{
   constructor(g,isBoss=false){this.group=g;this.isBoss=isBoss;this.maxHP=isBoss?150:C.maxHP;this.hp=this.maxHP;this.maxPosture=C.maxPosture;this.posture=0;this.state='idle';this.timer=0;this.lastPostureAt=0;this.guard=false;this.iframe=false;this.parryWindow=0;this.cooldown=0;this.attack=null;this.attackResolved=false;this.attackQueue=null;this.comboStep=0;this.comboReset=0;this.dodgeDir=new THREE.Vector3();this.aiTimer=.75;this.aiCooldown=.75;this.currentBossAttack=null;this.dead=false;}
@@ -29,7 +195,7 @@ function init(){
  scene.add(new THREE.HemisphereLight(0x8894bd,0x251a15,1));const sun=new THREE.DirectionalLight(0xffc48c,2);sun.position.set(7,12,6);sun.castShadow=true;scene.add(sun);
  const ground=new THREE.Mesh(new THREE.CircleGeometry(18,64),mat(0x24201d));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
  for(let i=0;i<20;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(1.5+Math.random()*3,3+Math.random()*7,5),mat(0x16121a));const a=Math.random()*Math.PI*2,r=16+Math.random()*13;m.position.set(Math.cos(a)*r,(m.geometry.parameters.height/2)-.4,Math.sin(a)*r);scene.add(m)}
- player=new Combatant(fighter(0x4b4038,0x17151a,0xd9d6c8));boss=new Combatant(fighter(0x19171c,0x5a2220,0xeee5cc),true);player.group.position.set(0,0,3);boss.group.position.set(0,0,-2.5);scene.add(player.group,boss.group);clock=new THREE.Clock();updateUI();addEvents();requestAnimationFrame(loop);
+ player=new Combatant(fighter(0x4b4038,0x17151a,0xd9d6c8,false));boss=new Combatant(fighter(0x19171c,0x5a2220,0xeee5cc,true),true);player.group.position.set(0,0,3);boss.group.position.set(0,0,-2.5);scene.add(player.group,boss.group);clock=new THREE.Clock();updateUI();addEvents();requestAnimationFrame(loop);
 }
 function addEvents(){
   addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
