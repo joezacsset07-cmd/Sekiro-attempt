@@ -54,9 +54,23 @@ function hideCallout(){ui.callout.classList.remove('show','danger','heavy');}
 function setPrompt(title,sub=''){ui.prompt.textContent=title;ui.promptSmall.textContent=sub;ui.prompt.style.opacity=title?'1':'0';}
 function burst(position,color=0xffd58b,count=14){
   const arr=new Float32Array(count*3),vel=[];for(let i=0;i<count;i++){arr[i*3]=position.x;arr[i*3+1]=position.y;arr[i*3+2]=position.z;vel.push(new THREE.Vector3(Math.random()-.5,Math.random()*.9,Math.random()-.5).normalize().multiplyScalar(1.2+Math.random()*2.5));}
-  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(arr,3));const pts=new THREE.Points(geo,new THREE.PointsMaterial({color,size:.07,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(pts);effects.push({obj:pts,vel,life:.34,max:.34});
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(arr,3));const pts=new THREE.Points(geo,new THREE.PointsMaterial({color,size:.07,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(pts);effects.push({obj:pts,type:'sparks',vel,life:.34,max:.34});
 }
-function updateEffects(dt){for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.life-=dt;const a=Math.max(0,e.life/e.max),p=e.obj.geometry.getAttribute('position');for(let n=0;n<e.vel.length;n++){e.vel[n].y-=7*dt;p.array[n*3]+=e.vel[n].x*dt;p.array[n*3+1]+=e.vel[n].y*dt;p.array[n*3+2]+=e.vel[n].z*dt;}p.needsUpdate=true;e.obj.material.opacity=a;if(e.life<=0){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}}}
+function slashTrail(actor,color=0xe1ecff,radius=1.15){
+  const pos=actor.group.position.clone(),f=forward(actor.group),right=new THREE.Vector3(f.z,0,-f.x),center=pos.addScaledVector(f,.72),vertices=[],indices=[],steps=16;
+  for(let i=0;i<=steps;i++){const a=-1.05+i/steps*2.1,p=center.clone().addScaledVector(right,Math.sin(a)*radius).addScaledVector(f,Math.cos(a)*.24);vertices.push(p.x,p.y+1.12,p.z,p.x,p.y+1.19,p.z);}
+  for(let i=0;i<steps;i++){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.setIndex(indices);
+  const obj=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));scene.add(obj);effects.push({obj,type:'slash',life:.14,max:.14});
+}
+function updateEffects(dt){
+  for(let i=effects.length-1;i>=0;i--){
+    const e=effects[i];e.life-=dt;const alpha=Math.max(0,e.life/e.max);
+    if(e.type==='slash'){e.obj.material.opacity=alpha*.78;e.obj.scale.setScalar(.9+(1-alpha)*.18);}
+    else{const p=e.obj.geometry.getAttribute('position');for(let n=0;n<e.vel.length;n++){e.vel[n].y-=7*dt;p.array[n*3]+=e.vel[n].x*dt;p.array[n*3+1]+=e.vel[n].y*dt;p.array[n*3+2]+=e.vel[n].z*dt;}p.needsUpdate=true;e.obj.material.opacity=alpha;}
+    if(e.life<=0){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
+  }
+}
 function endGame(victory){if(gameEnded)return;gameEnded=true;running=false;ui.eyebrow.textContent=victory?'Z A N S H I N  ·  VICTORY':'Z A N S H I N  ·  DEFEAT';ui.title.textContent=victory?'DEATHBLOW':'YOU DIED';ui.description.textContent=victory?'The Ashen Warrior falls. The duel is won.':'Steady your hands and return to the duel.';ui.start.textContent='FIGHT AGAIN';ui.controls.textContent='Press R to retry, or choose Fight Again.';ui.screen.classList.remove('hidden');ui.screen.classList.add('end-screen');hideCallout();}
 function die(target){if(target.dead)return;target.dead=true;target.state='dead';target.timer=0;burst(target.group.position.clone().add(new THREE.Vector3(0,1.2,0)),target===boss?0xff6948:0xd7c8a2,28);flash(.45,.13);popup(target===boss?'DEATHBLOW':'YOU DIED','big');setTimeout(()=>endGame(target===boss),650);}
 function breakBossPosture(){boss.state='postureBreak';boss.timer=0;boss.currentBossAttack=null;boss.attack=null;showCallout('POSTURE BROKEN','Close in and press F to deliver the deathblow.','heavy');popup('POSTURE BROKEN','big');burst(boss.group.position.clone().add(new THREE.Vector3(0,1.3,0)),0xffd078,26);flash(.5,.11);}
@@ -69,7 +83,7 @@ function damage(target,hp,posture){
 function deflectBossAttack(){
   const atk=boss.currentBossAttack||{name:'QUICK CUT'};addPosture(boss,atk.name==='HEAVY CUT'?34:27);
   boss.state=boss.state==='postureBreak'?'postureBreak':'stagger';boss.timer=0;boss.currentBossAttack=null;boss.aiCooldown=.48;player.posture=Math.max(0,player.posture-12);player.lastPostureAt=performance.now()/1000;
-  popup('DEFLECT','big');const pos=player.group.position.clone().lerp(boss.group.position,.52).add(new THREE.Vector3(0,1.35,0));burst(pos,0xffe2a0,26);burst(pos,0xcfeaff,10);flash(.48,.095);hideCallout();
+  popup('DEFLECT','big');slashTrail(player,0xfff0b6,1.25);const pos=player.group.position.clone().lerp(boss.group.position,.52).add(new THREE.Vector3(0,1.35,0));burst(pos,0xffe2a0,26);burst(pos,0xcfeaff,10);flash(.48,.095);hideCallout();
 }
 function playerAttack(kind='light'){
   if(player.dead||player.guard||['hit','guardHit','stagger','dodge'].includes(player.state))return;
@@ -101,7 +115,7 @@ function playerUpdate(dt){
   if(pressed.mouse0||pressed.j)playerAttack('light');if(pressed.e)playerAttack('heavy');if(pressed.shift||pressed.l)dodge();
   if(player.state==='attack'){
     player.timer+=dt;const a=player.attack;
-    if(a&&!player.attackResolved&&player.timer>=a.impact){player.attackResolved=true;const d=distance(player.group,boss.group),toBoss=boss.group.position.clone().sub(player.group.position).normalize(),dot=forward(player.group).dot(toBoss);if(d<=C.attackRange+(a.type==='heavy'?.18:0)&&dot>.02&&!boss.dead&&boss.state!=='postureBreak'){damage(boss,a.damage,a.posture);burst(boss.group.position.clone().add(new THREE.Vector3(0,1.2,0)),0xf4d7a0,a.step===2?18:9);popup(a.step===2?'CLEAN HIT':'HIT','small');}else popup('MISS','tiny');}
+    if(a&&!player.attackResolved&&player.timer>=a.impact){player.attackResolved=true;const d=distance(player.group,boss.group),toBoss=boss.group.position.clone().sub(player.group.position).normalize(),dot=forward(player.group).dot(toBoss);if(d<=C.attackRange+(a.type==='heavy'?.18:0)&&dot>.02&&!boss.dead&&boss.state!=='postureBreak'){damage(boss,a.damage,a.posture);slashTrail(player,a.type==='heavy'?0xffd28e:0xd9eaff,a.type==='heavy'?1.38:1.15);burst(boss.group.position.clone().add(new THREE.Vector3(0,1.2,0)),0xf4d7a0,a.step===2?18:9);popup(a.step===2?'CLEAN HIT':'HIT','small');}else popup('MISS','tiny');}
     if(a&&player.timer>=a.duration)finishPlayerAttack();
   }else if(player.state==='dodge'){
     player.timer+=dt;const t=Math.min(1,player.timer/C.dodgeTime);player.group.position.addScaledVector(player.dodgeDir,C.dodgeSpeed*(1-.72*t)*dt);player.iframe=player.timer<C.dodgeIFrames;if(player.timer>=C.dodgeTime){player.state='idle';player.timer=0;player.iframe=false;}
@@ -128,7 +142,7 @@ function bossUpdate(dt){
   if(boss.state==='postureBreak'){boss.timer+=dt;if(d<3)setPrompt('F  —  DEATHBLOW','The warrior is exposed. End the duel.');else setPrompt('POSTURE BROKEN','Move close to the warrior to perform a deathblow.');if(pressed.f&&d<3){setPrompt('','');die(boss);return;}if(boss.timer>5.2){boss.posture=56;boss.state='recover';boss.timer=0;boss.aiCooldown=.8;hideCallout();setPrompt('','');popup('RECOVERED','small');}return;}
   setPrompt('','');
   if(boss.state==='stagger'){boss.timer+=dt;if(boss.timer>.42){boss.state='recover';boss.timer=0;hideCallout();}return;}
-  if(boss.state==='windup'){boss.timer+=dt;if(boss.timer<boss.currentBossAttack.windup*.55)face(boss.group,player.group.position);if(boss.timer>=boss.currentBossAttack.windup){boss.state='active';boss.timer=0;boss.group.position.addScaledVector(forward(boss.group),boss.currentBossAttack.perilous?.72:.18);resolveBossImpact();hideCallout();}return;}
+  if(boss.state==='windup'){boss.timer+=dt;if(boss.timer<boss.currentBossAttack.windup*.55)face(boss.group,player.group.position);if(boss.timer>=boss.currentBossAttack.windup){boss.state='active';boss.timer=0;slashTrail(boss,boss.currentBossAttack.perilous?0xff3852:0xff7956,boss.currentBossAttack.name==='HEAVY CUT'?1.42:1.18);boss.group.position.addScaledVector(forward(boss.group),boss.currentBossAttack.perilous?.72:.18);resolveBossImpact();hideCallout();}return;}
   if(boss.state==='active'){boss.timer+=dt;if(boss.timer>=(boss.currentBossAttack?boss.currentBossAttack.active:.17)){boss.state='recover';boss.timer=0;if(boss.currentBossAttack&&boss.currentBossAttack.perilous)boss.group.position.addScaledVector(forward(boss.group),-.28);}return;}
   if(boss.state==='recover'){boss.timer+=dt;if(boss.timer>=(boss.currentBossAttack?boss.currentBossAttack.recovery:.55)){boss.state='idle';boss.timer=0;boss.currentBossAttack=null;}return;}
   if(d>2.35){boss.group.position.addScaledVector(player.group.position.clone().sub(boss.group.position).setY(0).normalize(),(phase?3.05:2.7)*dt);boss.state='move';const n=Math.hypot(boss.group.position.x,boss.group.position.z);if(n>13)boss.group.position.multiplyScalar(13/n);return;}
