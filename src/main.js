@@ -21,7 +21,7 @@ function fighter(color,accent,blade){
   part(g,new THREE.CylinderGeometry(.04,.05,.76,8),dark,[-.42,.98,-.11],[0,0,-.12]);g.userData=b;return g;
 }
 class Combatant{
-  constructor(g,isBoss=false){this.group=g;this.isBoss=isBoss;this.maxHP=C.maxHP;this.hp=C.maxHP;this.maxPosture=C.maxPosture;this.posture=0;this.state='idle';this.timer=0;this.lastPostureAt=0;this.guard=false;this.iframe=false;this.parryWindow=0;this.cooldown=0;this.attack=null;this.attackResolved=false;this.attackQueue=null;this.comboStep=0;this.comboReset=0;this.dodgeDir=new THREE.Vector3();this.aiTimer=.75;this.aiCooldown=.75;this.currentBossAttack=null;this.dead=false;}
+  constructor(g,isBoss=false){this.group=g;this.isBoss=isBoss;this.maxHP=isBoss?150:C.maxHP;this.hp=this.maxHP;this.maxPosture=C.maxPosture;this.posture=0;this.state='idle';this.timer=0;this.lastPostureAt=0;this.guard=false;this.iframe=false;this.parryWindow=0;this.cooldown=0;this.attack=null;this.attackResolved=false;this.attackQueue=null;this.comboStep=0;this.comboReset=0;this.dodgeDir=new THREE.Vector3();this.aiTimer=.75;this.aiCooldown=.75;this.currentBossAttack=null;this.dead=false;}
 }
 function init(){
  scene=new THREE.Scene();scene.background=new THREE.Color(0x100b12);scene.fog=new THREE.FogExp2(0x100b12,.027);
@@ -71,11 +71,6 @@ function deflectBossAttack(){
   boss.state=boss.state==='postureBreak'?'postureBreak':'stagger';boss.timer=0;boss.currentBossAttack=null;boss.aiCooldown=.48;player.posture=Math.max(0,player.posture-12);player.lastPostureAt=performance.now()/1000;
   popup('DEFLECT','big');const pos=player.group.position.clone().lerp(boss.group.position,.52).add(new THREE.Vector3(0,1.35,0));burst(pos,0xffe2a0,26);burst(pos,0xcfeaff,10);flash(.48,.095);hideCallout();
 }
-function popup(text){const p=document.createElement('div');p.className='popup';p.textContent=text;document.querySelector('#hud').appendChild(p);setTimeout(()=>p.remove(),800)}
-function flash(){shake=Math.max(shake,.35);hitStop=.055}
-function damage(target,hp,posture){target.hp=Math.max(0,target.hp-hp);target.posture=Math.min(target.maxPosture,target.posture+posture);target.lastPosture=performance.now();flash();if(target.hp<=0)die(target)}
-function die(target){target.state='dead';target.group.userData.torso.rotation.x=.8;if(target===boss){popup('DEATHBLOW');setTimeout(()=>{running=false;ui.prompt.textContent='VICTORY';ui.prompt.style.opacity=1},300)}else{running=false;ui.prompt.textContent='YOU DIED';ui.prompt.style.opacity=1}}
-function deflect(){boss.posture=Math.min(boss.maxPosture,boss.posture+C.deflectPosture);boss.state='stagger';boss.timer=.22;player.posture=Math.max(0,player.posture-5);popup('DEFLECT');flash()}
 function playerAttack(kind='light'){
   if(player.dead||player.guard||['hit','guardHit','stagger','dodge'].includes(player.state))return;
   if(player.state==='attack'){player.attackQueue=kind;return;}face(player.group,boss.group.position);player.state='attack';player.timer=0;player.attackResolved=false;
@@ -101,6 +96,7 @@ function resolveBossImpact(){
   damage(player,atk.damage,atk.posture);
 }
 function playerUpdate(dt){
+  if(player.dead||gameEnded)return;
   const wantGuard=!!(keys.k||mouseGuard);if(pressed.guard)player.parryWindow=C.deflectWindow;else player.parryWindow=Math.max(0,player.parryWindow-dt);player.guard=wantGuard;
   if(pressed.mouse0||pressed.j)playerAttack('light');if(pressed.e)playerAttack('heavy');if(pressed.shift||pressed.l)dodge();
   if(player.state==='attack'){
