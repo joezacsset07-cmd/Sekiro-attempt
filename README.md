@@ -36,3 +36,10 @@ Serve the repository with a local or static web server. The game imports Three.j
 ## Next upgrades
 
 Replace the procedural fighter meshes with proper character assets, add more distinct animation clips and weapon trails, tune the boss's combat patterns through playtesting, and improve audio and impact VFX.
+
+## Character model and materials
+
+The current fighters use a procedural low-poly samurai/shinobi model built in Three.js, with articulated limbs so the combat animation system can still drive them. The model now includes layered chest and shoulder armour, cloth lapels and hanging panels, shin guards, strapped sandals, a head wrap/helmet, face covering, hair details, a katana and a back-mounted sheath.
+
+Three generated-at-runtime canvas textures provide subtle woven cloth, mottled skin and brushed metal detail. They are created in the browser, so the prototype does not need external character texture files or another asset download.
+
