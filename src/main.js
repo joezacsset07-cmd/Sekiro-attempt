@@ -24,27 +24,6 @@ class Combatant{
   constructor(g,isBoss=false){this.group=g;this.isBoss=isBoss;this.maxHP=C.maxHP;this.hp=C.maxHP;this.maxPosture=C.maxPosture;this.posture=0;this.state='idle';this.timer=0;this.lastPostureAt=0;this.guard=false;this.iframe=false;this.parryWindow=0;this.cooldown=0;this.attack=null;this.attackResolved=false;this.attackQueue=null;this.comboStep=0;this.comboReset=0;this.dodgeDir=new THREE.Vector3();this.aiTimer=.75;this.aiCooldown=.75;this.currentBossAttack=null;this.dead=false;}
 }
 function init(){
-const ui={bossHP:document.querySelector('#boss-hp>div'),bossPosture:document.querySelector('#boss-posture'),playerHP:document.querySelector('#player-hp'),playerPosture:document.querySelector('#player-posture'),prompt:document.querySelector('#prompt'),start:document.querySelector('#start'),screen:document.querySelector('#start-screen')};
-
-function mat(color,metal=0,rough=.75){return new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough})}
-function fighter(color,accent,blade){
- const g=new THREE.Group();const body=mat(color), acc=mat(accent,.15,.65), steel=mat(blade,.85,.22);
- const pelvis=new THREE.Mesh(new THREE.BoxGeometry(.62,.34,.42),acc);pelvis.position.y=.95;g.add(pelvis);
- const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.28,.85,10),body);torso.position.y=1.42;g.add(torso);
- const head=new THREE.Mesh(new THREE.SphereGeometry(.24,16,12),body);head.position.y=2.08;g.add(head);
- for(const x of [-.18,.18]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,.9,8),body);leg.position.set(x,.45,0);g.add(leg)}
- const shoulder=new THREE.Group();shoulder.position.set(.42,1.7,0);g.add(shoulder);
- const arm=new THREE.Mesh(new THREE.CylinderGeometry(.09,.1,.62,8),body);arm.position.y=-.28;shoulder.add(arm);
- const sword=new THREE.Group();sword.position.y=-.62;shoulder.add(sword);
- const bladeMesh=new THREE.Mesh(new THREE.BoxGeometry(.07,1.12,.035),steel);bladeMesh.position.y=.62;sword.add(bladeMesh);
- const guard=new THREE.Mesh(new THREE.BoxGeometry(.22,.045,.055),acc);guard.position.y=.08;sword.add(guard);
- const hilt=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.24,8),mat(0x171214));hilt.position.y=-.04;sword.add(hilt);
- g.userData={torso,head,shoulder,sword,blade:bladeMesh};return g;
-}
-
-class Combatant{constructor(g,isBoss=false){this.group=g;this.isBoss=isBoss;this.hp=C.maxHP;this.posture=C.maxPosture;this.state='idle';this.timer=0;this.attackResolved=false;this.guard=false;this.iframe=false;this.cooldown=0;this.attackKind='slash';this.aiTimer=0;this.aiWindup=0;this.deflectable=false}}
-
-function init(){
  scene=new THREE.Scene();scene.background=new THREE.Color(0x100b12);scene.fog=new THREE.FogExp2(0x100b12,.027);
  camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.8));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;document.querySelector('#game').appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0x8894bd,0x251a15,1));const sun=new THREE.DirectionalLight(0xffc48c,2);sun.position.set(7,12,6);sun.castShadow=true;scene.add(sun);
